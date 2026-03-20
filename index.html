@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plum — Escalation Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js" crossorigin></script>
+  <style>
+    :root {
+      --bg: #f7f4ef;
+      --surface: #ffffff;
+      --surface2: #f2ede6;
+      --surface3: #e8e1d8;
+      --border: rgba(0,0,0,0.08);
+      --border2: rgba(0,0,0,0.14);
+      --purple: #6d4ef0;
+      --purple-light: #5a3dd8;
+      --purple-dim: rgba(109,78,240,0.1);
+      --purple-glow: rgba(109,78,240,0.2);
+      --text: #1c1a2e;
+      --text2: #4a4868;
+      --text3: #8a88aa;
+      --p1: #c53030;
+      --p1-bg: rgba(197,48,48,0.08);
+      --p2: #c05621;
+      --p2-bg: rgba(192,86,33,0.08);
+      --p3: #276749;
+      --p3-bg: rgba(39,103,73,0.08);
+      --email: #2b6cb0;
+      --slack: #2f855a;
+      --whatsapp: #276749;
+      --open: #c05621;
+      --progress: #6d4ef0;
+      --resolved: #276749;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      font-size: 14px;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+    .sidebar { box-shadow: 1px 0 0 var(--border); }
+    .topbar { box-shadow: 0 1px 0 var(--border); }
+    .msg-card:hover { background: #f7f3ed; }
+    .msg-card.selected { background: var(--purple-dim); }
+    .search-wrap input { background: var(--surface2); }
+    .search-wrap input:focus { background: #fff; border-color: var(--purple); }
+    button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+    input { font-family: inherit; outline: none; }
+
+    /* Layout */
+    .app { display: flex; height: 100vh; }
+    .sidebar {
+      width: 220px; min-width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+    }
+    .sidebar-logo {
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo .logo-mark {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #7c5cfc, #b07dff);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: #fff;
+    }
+    .logo-text { font-size: 17px; font-weight: 700; color: var(--text); }
+    .logo-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .api-status {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 12px; padding: 6px 10px; border-radius: 6px;
+      background: var(--surface2); font-size: 11px;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+    .status-dot.green { background: var(--p3); box-shadow: 0 0 6px var(--p3); }
+    .status-dot.red { background: var(--p1); box-shadow: 0 0 6px var(--p1); }
+    .status-dot.yellow { background: var(--p2); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+    .nav-section-label {
+      font-size: 10px; font-weight: 600; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 8px 8px 4px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 7px;
+      cursor: pointer; color: var(--text2); font-size: 13px;
+      transition: all 0.15s; margin-bottom: 1px;
+      user-select: none;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: var(--purple-dim); color: var(--purple-light); }
+    .nav-item .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+    .nav-badge {
+      margin-left: auto; background: var(--p1);
+      color: #fff; font-size: 10px; font-weight: 700;
+      padding: 1px 6px; border-radius: 20px; min-width: 20px; text-align: center;
+    }
+    .nav-badge.purple { background: var(--purple); }
+
+    .sidebar-footer {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 11px; color: var(--text3);
+    }
+    .sidebar-footer .sync-btn {
+      width: 100%; padding: 7px; border-radius: 7px;
+      background: var(--surface2); color: var(--text2); font-size: 12px;
+      border: 1px solid var(--border2); transition: all 0.15s;
+      margin-bottom: 8px;
+    }
+    .sidebar-footer .sync-btn:hover { background: var(--surface3); color: var(--text); }
+
+    /* Main area */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .topbar-title { font-size: 16px; font-weight: 700; }
+    .topbar-sub { font-size: 12px; color: var(--text3); margin-left: 2px; }
+    .search-wrap {
+      flex: 1; max-width: 360px; margin-left: 10px;
+      position: relative;
+    }
+    .search-wrap input {
+      width: 100%; padding: 8px 12px 8px 34px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 13px;
+      transition: border-color 0.15s;
+    }
+    .search-wrap input:focus { border-color: var(--purple); }
+    .search-wrap input::placeholder { color: var(--text3); }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text3); font-size: 14px; pointer-events: none;
+    }
+    .topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+    .btn {
+      padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c5cfc, #9b7dff);
+      color: #fff;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-ghost {
+      background: var(--surface2); color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface3); color: var(--text); }
+    .btn-danger-ghost {
+      background: transparent; color: var(--p1);
+      border: 1px solid rgba(255,77,109,0.3);
+    }
+    .btn-danger-ghost:hover { background: var(--p1-bg); }
+
+    /* Filters bar */
+    .filters-bar {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-chip {
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text2);
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .filter-chip:hover { border-color: var(--purple); color: var(--purple-light); }
+    .filter-chip.active {
+      background: var(--purple-dim); border-color: var(--purple);
+      color: var(--purple-light);
+    }
+    .filter-sep { width: 1px; background: var(--border); height: 24px; }
+    .filter-count { font-size: 11px; color: var(--text3); margin-left: 4px; }
+
+    /* Content */
+    .content-area {
+      flex: 1; display: flex; overflow: hidden;
+    }
+
+    /* List panel */
+    .list-panel {
+      width: 420px; min-width: 420px;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .list-scroll { flex: 1; overflow-y: auto; }
+    .list-empty {
+      padding: 60px 20px; text-align: center; color: var(--text3);
+    }
+    .list-empty .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+    /* Message card */
+    .msg-card {
+      padding: 13px 16px 13px 20px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+      position: relative;
+      border-left: 3px solid transparent;
+    }
+    .msg-card:hover { background: var(--surface2); }
+    .msg-card.selected {
+      background: var(--purple-dim);
+      border-left-color: var(--purple);
+    }
+    .msg-card.priority-p1 { border-left-color: var(--p1); }
+    .msg-card.priority-p1:hover, .msg-card.priority-p1.selected {
+      box-shadow: inset 3px 0 12px rgba(255,77,109,0.08);
+    }
+    .msg-card.priority-p2 { border-left-color: var(--p2); }
+    .msg-card.selected.priority-p1 { border-left-color: var(--p1); }
+    .msg-card.selected.priority-p2 { border-left-color: var(--p2); }
+
+    .msg-card-row1 {
+      display: flex; align-items: center; gap: 9px; margin-bottom: 5px;
+    }
+    .msg-avatar {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; letter-spacing: -0.02em;
+    }
+    .msg-card-meta { flex: 1; min-width: 0; }
+    .msg-company {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      line-height: 1.3;
+    }
+    .msg-sender {
+      font-size: 11px; color: var(--text3);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .msg-time { font-size: 10px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+    .msg-subject {
+      font-size: 12px; color: var(--text2); margin-bottom: 6px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-weight: 500; line-height: 1.4;
+    }
+    .msg-preview {
+      font-size: 11px; color: var(--text3); margin-bottom: 7px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      line-height: 1.4;
+    }
+    .msg-badges { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .badge-p1 { background: var(--p1-bg); color: var(--p1); }
+    .badge-p2 { background: var(--p2-bg); color: var(--p2); }
+    .badge-p3 { background: var(--p3-bg); color: var(--p3); }
+    .badge-source-email { background: rgba(96,165,250,0.12); color: var(--email); }
+    .badge-source-slack { background: rgba(74,222,128,0.12); color: var(--slack); }
+    .badge-source-whatsapp { background: rgba(52,211,153,0.12); color: var(--whatsapp); }
+    .badge-category {
+      background: var(--surface3); color: var(--text2);
+    }
+    .badge-status-open { background: rgba(255,159,67,0.12); color: var(--open); }
+    .badge-status-progress { background: var(--purple-dim); color: var(--purple-light); }
+    .badge-status-resolved { background: var(--p3-bg); color: var(--p3); }
+    .badge-live { background: rgba(52,211,153,0.12); color: #34d399; }
+
+    /* Pagination */
+    .pagination {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; color: var(--text3);
+    }
+    .pagination-btns { display: flex; gap: 4px; }
+    .page-btn {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: var(--surface2); color: var(--text2);
+      border: 1px solid var(--border); font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .page-btn:hover { background: var(--surface3); color: var(--text); }
+    .page-btn.active { background: var(--purple-dim); color: var(--purple-light); border-color: var(--purple); }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Detail panel */
+    .detail-panel {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .detail-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 12px; color: var(--text3);
+    }
+    .detail-empty .empty-icon { font-size: 48px; opacity: 0.3; }
+    .detail-scroll { flex: 1; overflow-y: auto; padding: 20px; }
+
+    .detail-header {
+      padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .detail-sender-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+    }
+    .detail-avatar {
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700;
+    }
+    .detail-sender-info { flex: 1; min-width: 0; }
+    .detail-company { font-size: 16px; font-weight: 700; line-height: 1.3; }
+    .detail-sender-email { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .detail-subject {
+      font-size: 13px; color: var(--text); margin-bottom: 10px; line-height: 1.55;
+      font-weight: 500; padding: 10px 12px;
+      background: var(--surface2); border-radius: 8px; border: 1px solid var(--border);
+    }
+    .detail-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+    .detail-section {
+      margin-bottom: 20px;
+    }
+    .detail-section-title {
+      font-size: 11px; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 8px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-body {
+      font-size: 13px; line-height: 1.75; color: var(--text2);
+      white-space: pre-wrap; word-break: break-word;
+      background: var(--surface2); padding: 14px; border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .detail-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .detail-kv {
+      background: var(--surface2); padding: 10px 12px; border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .detail-kv-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; text-transform: uppercase; }
+    .detail-kv-value { font-size: 13px; color: var(--text); font-weight: 500; }
+
+    .ai-box {
+      background: linear-gradient(135deg, rgba(124,92,252,0.08), rgba(155,125,255,0.05));
+      border: 1px solid rgba(124,92,252,0.25);
+      border-radius: 10px; padding: 14px;
+    }
+    .ai-box-label {
+      font-size: 10px; font-weight: 700; color: var(--purple-light);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ai-box-label::before { content: "✦"; font-size: 12px; }
+    .ai-box p { font-size: 13px; line-height: 1.7; color: var(--text2); white-space: pre-wrap; }
+    .ai-loading {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text3); font-size: 13px; padding: 8px 0;
+    }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid var(--border);
+      border-top-color: var(--purple); border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .reply-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px;
+    }
+    .reply-box textarea {
+      width: 100%; background: transparent; border: none;
+      color: var(--text); font-family: inherit; font-size: 13px;
+      line-height: 1.7; resize: none; min-height: 120px;
+    }
+    .reply-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+    /* Status select */
+    .status-select {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 7px; padding: 5px 10px;
+      font-family: inherit; font-size: 12px; cursor: pointer;
+    }
+    .status-select:focus { border-color: var(--purple); outline: none; }
+
+    /* Analytics view */
+    .analytics-view {
+      flex: 1; overflow-y: auto; padding: 24px; background: var(--bg);
+    }
+    .analytics-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--card-accent, var(--purple));
+    }
+    .stat-card-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-card-value { font-size: 28px; font-weight: 700; }
+    .stat-card-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .stat-card-icon { font-size: 22px; margin-bottom: 6px; }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .chart-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+    }
+    .chart-card-title {
+      font-size: 13px; font-weight: 700; margin-bottom: 20px;
+      color: var(--text); letter-spacing: 0.01em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chart-card-title::before {
+      content: ''; display: block; width: 3px; height: 14px;
+      background: var(--purple); border-radius: 2px;
+    }
+    /* Donut chart */
+    .donut-container { display: flex; align-items: center; gap: 20px; }
+    .donut-legend { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .donut-legend-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: 7px; cursor: default;
+      transition: background 0.12s;
+    }
+    .donut-legend-item:hover { background: var(--surface2); }
+    .donut-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .donut-legend-label { flex: 1; font-size: 12px; color: var(--text2); }
+    .donut-legend-count { font-size: 12px; font-weight: 700; color: var(--text); }
+    .donut-legend-pct { font-size: 10px; color: var(--text3); min-width: 32px; text-align: right; }
+    /* Source tiles */
+    .source-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .source-tile {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+      transition: border-color 0.15s;
+    }
+    .source-tile:hover { border-color: var(--border2); }
+    .source-tile-icon { font-size: 22px; margin-bottom: 2px; }
+    .source-tile-count { font-size: 26px; font-weight: 700; }
+    .source-tile-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+    /* Status segmented bar */
+    .status-seg-bar {
+      display: flex; height: 10px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 12px 0;
+    }
+    .status-seg { border-radius: 3px; transition: width 0.6s ease; }
+    .status-legend-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .status-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); }
+    .status-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+    /* Bar chart (kept for team) */
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .bar-label { font-size: 12px; color: var(--text2); width: 90px; text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; background: var(--surface2); border-radius: 4px; height: 7px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .bar-count { font-size: 11px; color: var(--text3); width: 36px; text-align: right; }
+
+    /* Source indicators */
+    .source-icon { font-size: 13px; }
+
+    /* Copy button */
+    .copy-btn {
+      padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 600;
+      background: var(--surface3); color: var(--text3); border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .copy-btn:hover { color: var(--text); border-color: var(--border2); }
+    .copy-btn.copied { color: var(--p3); border-color: rgba(72,187,120,0.3); background: var(--p3-bg); }
+
+    /* Timeline dot for received time */
+    .detail-time-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; color: var(--text3); margin-bottom: 10px;
+    }
+    .detail-time-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0;
+    }
+
+    /* Assigned owner card */
+    .owner-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; background: var(--surface2); border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .owner-avatar {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+    }
+    .owner-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .owner-role { font-size: 11px; color: var(--text3); margin-top: 1px; }
+    .owner-status {
+      margin-left: auto; font-size: 10px; font-weight: 600; padding: 3px 8px;
+      border-radius: 20px; background: var(--p3-bg); color: var(--p3);
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 900px) {
+      .sidebar { width: 180px; min-width: 180px; }
+      .list-panel { width: 340px; min-width: 340px; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+const API = window.PLUM_API_URL || "https://plum-escalation-dashboard-production.up.railway.app";
+
+// ──────────────────────────────────────────────
+// Mock data generator (fallback when API offline)
+// ──────────────────────────────────────────────
+function seededRand(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+function generateMockData() {
+  const rand = seededRand(42);
+  const pick = arr => arr[Math.floor(rand() * arr.length)];
+  const companies = ["Infosys Ltd","TCS","Wipro","Zomato","Swiggy","Razorpay","CRED","Meesho",
+    "PhonePe","Ola","Nykaa","Groww","Zepto","Lenskart","Freshworks","Pine Labs","BharatPe",
+    "Rapido","Shiprocket","Delhivery","HDFC Life","Bajaj Finserv","Acko","Niva Bupa"];
+  const firstNames = ["Rahul","Priya","Amit","Sneha","Vikram","Deepa","Kiran","Ananya","Suresh","Neha"];
+  const lastNames = ["Kumar","Sharma","Singh","Nair","Gupta","Iyer","Shah","Pillai","Menon","Rao"];
+  const categories = ["Escalation","Escalation","Complaint","Complaint","Follow-up","Query","Query","Initiation","Appreciation"];
+  const sources = ["email","email","slack","whatsapp"];
+  const statuses = ["open","open","in-progress","resolved"];
+  const priorities_esc = ["P1","P2","P2"];
+  const channels = ["all-plum-escalation-dashboard","general","claims-support"];
+
+  const subjects = {
+    Escalation: ["URGENT: Cashless claim rejected — Employee admitted","CRITICAL: Pre-auth denied for surgery","Emergency: TPA not responding — 5 days pending","Escalating to management — Policy renewal failed","Employee in ICU — Insurance refusing cashless"],
+    Complaint: ["Formal complaint — Poor service from Plum","Complaint: Wrong premium deduction","Unhappy with claim settlement amount","IRDAI non-compliance complaint","Worst experience — portal down and no support"],
+    "Follow-up": ["Follow-up: Claim still pending — 2nd reminder","Reminder: Invoice overdue","Status on employee addition request","Following up on health card issuance"],
+    Query: ["Is maternity benefit available for new joiner?","How to add dependents to group policy?","Query on pre-existing disease coverage","Room rent sublimit clarification needed","How to submit reimbursement claim?"],
+    Initiation: ["Interested in Plum for our 200-person team","Request for proposal — Group health renewal","New employee batch enrollment — 45 joiners","Getting started with Plum — referred by friend"],
+    Appreciation: ["Thank you — Excellent emergency claim handling","Great experience — Happy to renew","Appreciation for smooth enrollment process"],
+  };
+
+  const bodies = {
+    Escalation: "Our employee was admitted last night. The cashless claim has been REJECTED by the TPA citing 'policy exclusion'. This is an emergency situation and the hospital is demanding immediate payment. Please escalate immediately. This is completely unacceptable and needs resolution in the next 2 hours.",
+    Complaint: "I am writing to formally complain about the terrible service we have received from Plum over the past month. Our account manager has not responded to 8 emails over 3 weeks. This is completely unprofessional and we are considering switching our broker.",
+    "Follow-up": "This is a follow-up on the claim submitted 10 days ago. We had previously written on this matter but have not received any update. Please provide an ETA for resolution.",
+    Query: "I have a query regarding our group health policy. Could you please clarify the coverage details and process for our employees? We need this information urgently.",
+    Initiation: "We are a growing startup and we're looking to set up group health insurance for our employees. Could you share your plans, pricing, and how the onboarding process works?",
+    Appreciation: "I wanted to take a moment to thank the entire Plum team for the exceptional handling of our recent emergency. The quick response and coordination was truly appreciated.",
+  };
+
+  const records = [];
+  const now = new Date();
+  for (let i = 0; i < 1200; i++) {
+    const company = pick(companies);
+    const fname = pick(firstNames);
+    const lname = pick(lastNames);
+    const cat = pick(categories);
+    const source = pick(sources);
+    const status = pick(statuses);
+    const priority = (cat === "Escalation" || cat === "Complaint") ? pick(priorities_esc) : "P3";
+    const hoursAgo = Math.floor(rand() * 24 * 30);
+    const createdAt = new Date(now - hoursAgo * 3600000);
+
+    let assignedTo, assignedRole;
+    const bodyText = bodies[cat] || "";
+    if (bodyText.toLowerCase().includes("cashless") || bodyText.toLowerCase().includes("claim")) {
+      assignedTo = "Ipsita Sahu"; assignedRole = "Claims Lead";
+    } else if (cat === "Escalation") {
+      assignedTo = "Arun Saseedharan"; assignedRole = "Senior AM";
+    } else if (cat === "Complaint") {
+      assignedTo = "Vaishnavi Bhat"; assignedRole = "Account Manager";
+    } else if (cat === "Query" || cat === "Initiation") {
+      assignedTo = "Rajorshi Chowdhury"; assignedRole = "Junior AM";
+    } else {
+      assignedTo = "Subash P"; assignedRole = "Customer Success";
+    }
+
+    records.push({
+      id: `mock-${i}-${Math.floor(rand()*10000)}`,
+      source,
+      sender_name: `${fname} ${lname}`,
+      sender_email: `${fname.toLowerCase()}.${lname.toLowerCase()}@${company.toLowerCase().replace(/\s/g,"")}.com`,
+      company,
+      subject: pick(subjects[cat] || subjects.Query),
+      body: bodies[cat] || bodies.Query,
+      category: cat,
+      priority,
+      status,
+      assigned_to: assignedTo,
+      assigned_role: assignedRole,
+      ai_summary: null,
+      ai_reply_draft: null,
+      channel: source === "slack" ? pick(channels) : null,
+      created_at: createdAt.toISOString(),
+      is_live: false,
+    });
+  }
+  return records;
+}
+
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
+function timeAgo(iso) {
+  if (!iso) return "";
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function priorityClass(p) {
+  if (p === "P1") return "badge badge-p1";
+  if (p === "P2") return "badge badge-p2";
+  return "badge badge-p3";
+}
+
+function sourceClass(s) {
+  return `badge badge-source-${s}`;
+}
+
+function statusClass(s) {
+  if (s === "open") return "badge badge-status-open";
+  if (s === "in-progress") return "badge badge-status-progress";
+  return "badge badge-status-resolved";
+}
+
+function sourceIcon(s) {
+  if (s === "email") return "✉";
+  if (s === "slack") return "#";
+  if (s === "whatsapp") return "📱";
+  return "•";
+}
+
+// ──────────────────────────────────────────────
+// App
+// ──────────────────────────────────────────────
+const ALL_MOCK = generateMockData();
+
+function App() {
+  const [apiOnline, setApiOnline] = useState(null); // null=checking
+  const [view, setView] = useState("list"); // list | analytics
+  const [records, setRecords] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [filterSource, setFilterSource] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterPriority, setFilterPriority] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterAssignedTo, setFilterAssignedTo] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [sourcesStatus, setSourcesStatus] = useState(null);
+  const searchTimer = useRef(null);
+
+  // Check API
+  useEffect(() => {
+    fetch(`${API}/`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(() => setApiOnline(true))
+      .catch(() => setApiOnline(false));
+    fetch(`${API}/api/sources/status`)
+      .then(r => r.json()).then(setSourcesStatus).catch(() => {});
+  }, []);
+
+  // Load stats
+  useEffect(() => {
+    if (apiOnline === true) {
+      fetch(`${API}/api/stats`).then(r => r.json()).then(setStats).catch(() => {});
+    } else if (apiOnline === false) {
+      // compute from mock
+      const s = { total: ALL_MOCK.length, p1_open: 0, by_category: {}, by_priority: {}, by_status: {}, by_source: {}, by_assignee: {} };
+      for (const cat of ["Escalation","Complaint","Follow-up","Query","Initiation","Appreciation"]) s.by_category[cat] = 0;
+      for (const p of ["P1","P2","P3"]) s.by_priority[p] = 0;
+      for (const st of ["open","in-progress","resolved"]) s.by_status[st] = 0;
+      for (const src of ["email","slack","whatsapp"]) s.by_source[src] = 0;
+      for (const r of ALL_MOCK) {
+        s.by_category[r.category] = (s.by_category[r.category] || 0) + 1;
+        s.by_priority[r.priority] = (s.by_priority[r.priority] || 0) + 1;
+        s.by_status[r.status] = (s.by_status[r.status] || 0) + 1;
+        s.by_source[r.source] = (s.by_source[r.source] || 0) + 1;
+        if (r.priority === "P1" && r.status !== "resolved") s.p1_open++;
+        if (r.assigned_to) {
+          if (!s.by_assignee[r.assigned_to]) s.by_assignee[r.assigned_to] = {total:0, open:0, in_progress:0, resolved:0, p1:0};
+          s.by_assignee[r.assigned_to].total++;
+          if (r.status === "open") s.by_assignee[r.assigned_to].open++;
+          else if (r.status === "in-progress") s.by_assignee[r.assigned_to].in_progress++;
+          else if (r.status === "resolved") s.by_assignee[r.assigned_to].resolved++;
+          if (r.priority === "P1") s.by_assignee[r.assigned_to].p1++;
+        }
+      }
+      setStats(s);
+    }
+  }, [apiOnline]);
+
+  // Load records
+  const loadRecords = useCallback(() => {
+    setLoading(true);
+    if (apiOnline === true) {
+      const params = new URLSearchParams({ page, page_size: pageSize });
+      if (filterSource) params.set("source", filterSource);
+      if (filterCategory) params.set("category", filterCategory);
+      if (filterPriority) params.set("priority", filterPriority);
+      if (filterStatus) params.set("status", filterStatus);
+      if (filterAssignedTo) params.set("assigned_to", filterAssignedTo);
+      if (sortBy && sortBy !== "created_at") params.set("sort_by", sortBy);
+      if (search) params.set("search", search);
+      fetch(`${API}/api/escalations?${params}`)
+        .then(r => r.json())
+        .then(data => {
+          setRecords(data.items);
+          setTotal(data.total);
+          setTotalPages(data.pages);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    } else if (apiOnline === false) {
+      // filter mock data
+      let filtered = ALL_MOCK;
+      if (filterSource) filtered = filtered.filter(r => r.source === filterSource);
+      if (filterCategory) filtered = filtered.filter(r => r.category === filterCategory);
+      if (filterPriority) filtered = filtered.filter(r => r.priority === filterPriority);
+      if (filterStatus) filtered = filtered.filter(r => r.status === filterStatus);
+      if (filterAssignedTo) filtered = filtered.filter(r => r.assigned_to === filterAssignedTo);
+      if (search) {
+        const q = search.toLowerCase();
+        filtered = filtered.filter(r =>
+          r.subject.toLowerCase().includes(q) ||
+          r.body.toLowerCase().includes(q) ||
+          r.sender_name.toLowerCase().includes(q) ||
+          r.company.toLowerCase().includes(q)
+        );
+      }
+      const catOrder = ["Escalation","Complaint","Follow-up","Query","Initiation","Appreciation"];
+      const priOrder = ["P1","P2","P3"];
+      if (sortBy === "category") filtered = [...filtered].sort((a,b) => catOrder.indexOf(a.category) - catOrder.indexOf(b.category));
+      else if (sortBy === "priority") filtered = [...filtered].sort((a,b) => priOrder.indexOf(a.priority) - priOrder.indexOf(b.priority));
+      else filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+      const start = (page - 1) * pageSize;
+      const pageItems = filtered.slice(start, start + pageSize);
+      setRecords(pageItems);
+      setTotal(filtered.length);
+      setTotalPages(Math.ceil(filtered.length / pageSize));
+      setLoading(false);
+    }
+  }, [apiOnline, page, pageSize, filterSource, filterCategory, filterPriority, filterStatus, filterAssignedTo, sortBy, search]);
+
+  useEffect(() => {
+    if (apiOnline !== null) loadRecords();
+  }, [loadRecords, apiOnline]);
+
+  // Search debounce
+  const handleSearchChange = (val) => {
+    setSearchInput(val);
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setSearch(val);
+      setPage(1);
+    }, 350);
+  };
+
+  // Filter change resets page
+  const setFilter = (setter) => (val) => { setter(val); setPage(1); };
+
+  // Sync
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleUploadXlsx = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !apiOnline) return;
+    setUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    fetch(`${API}/api/upload-data`, { method: "POST", body: form })
+      .then(r => r.json())
+      .then(data => {
+        setUploading(false);
+        e.target.value = "";
+        if (data.success) {
+          fetch(`${API}/api/stats`).then(r => r.json()).then(setStats).catch(() => {});
+          loadRecords();
+          alert(`✅ Imported ${data.rows_imported} records from your xlsx!`);
+        } else {
+          alert(`❌ Upload failed: ${data.detail || "Unknown error"}`);
+        }
+      })
+      .catch(err => { setUploading(false); alert(`❌ Upload failed: ${err}`); });
+  };
+
+  const handleSync = () => {
+    if (!apiOnline) return;
+    setSyncing(true);
+    fetch(`${API}/api/sync`, { method: "POST" })
+      .then(r => r.json())
+      .then(data => {
+        setSyncing(false);
+        loadRecords();
+        alert(`Sync complete!\nGmail: +${data.gmail}\nSlack: +${data.slack}\nWhatsApp: +${data.whatsapp}`);
+      })
+      .catch(() => setSyncing(false));
+  };
+
+  // AI summarise
+  const handleSummarise = (id) => {
+    if (!apiOnline) {
+      // mock AI response
+      const mockSummary = "The customer is experiencing a critical health insurance claim issue requiring immediate attention. The TPA has rejected the cashless request citing policy exclusion, while the employee is currently admitted. This needs escalation to the claims team and TPA coordinator within 2 hours.";
+      const mockReply = `Dear ${selected?.sender_name?.split(" ")[0] || "Sir/Madam"},\n\nThank you for reaching out to us. We understand the urgency of this situation and sincerely apologize for the inconvenience caused.\n\nI have immediately escalated this to our Claims Lead who will contact the TPA within the next 30 minutes. You can expect an update from our team by [TIME].\n\nPlease rest assured that we are treating this as a Priority 1 case and will ensure your employee receives the necessary medical care without financial disruption.\n\nBest regards,\nPlum Support Team`;
+      setSelected(prev => prev ? { ...prev, ai_summary: mockSummary, ai_reply_draft: mockReply } : prev);
+      setReplyText(mockReply);
+      return;
+    }
+    setAiLoading(true);
+    fetch(`${API}/api/ai/summarise/${id}`, { method: "POST" })
+      .then(r => r.json())
+      .then(data => {
+        setSelected(data);
+        setReplyText(data.ai_reply_draft || "");
+        setAiLoading(false);
+      })
+      .catch(() => setAiLoading(false));
+  };
+
+  // Update status
+  const handleStatusChange = (id, status) => {
+    const update = { status };
+    if (apiOnline) {
+      fetch(`${API}/api/escalations/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+      })
+        .then(r => r.json())
+        .then(data => {
+          setSelected(data);
+          setRecords(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+        });
+    } else {
+      setSelected(prev => prev ? { ...prev, status } : prev);
+      setRecords(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    }
+  };
+
+  // Run AI pipeline
+  const handleAIPipeline = () => {
+    if (!apiOnline) { alert("Backend must be running to use AI Pipeline. Start with: uvicorn main:app --reload --port 8000"); return; }
+    fetch(`${API}/api/ai/pipeline`, { method: "POST" })
+      .then(r => r.json())
+      .then(data => {
+        alert(`AI Pipeline complete! Processed ${data.processed} P1 escalations.`);
+        loadRecords();
+      });
+  };
+
+  const categories = ["Escalation","Complaint","Follow-up","Query","Initiation","Appreciation"];
+  const sources = ["email","slack","whatsapp"];
+  const priorities = ["P1","P2","P3"];
+  const statuses = ["open","in-progress","resolved"];
+  // Palette cycles through colours for any number of team members
+  const MEMBER_COLORS = ["#c53030","#2b6cb0","#2f855a","#6d4ef0","#c05621","#276749","#b7791f","#4a4868","#97266d","#2c7a7b","#744210","#1a365d"];
+
+  // Build team list dynamically from stats (whoever has tickets) + fallback defaults
+  const DEFAULT_MEMBERS = [
+    {name:"Ipsita Sahu", role:"Claims Lead"},
+    {name:"Manashi Goswami", role:"Compliance"},
+    {name:"Mikhel Dhiman", role:"Tech Support"},
+    {name:"Arun Saseedharan", role:"Senior AM"},
+    {name:"Vaishnavi Bhat", role:"Account Manager"},
+    {name:"Rajorshi Chowdhury", role:"Junior AM"},
+    {name:"Subash P", role:"Customer Success"},
+    {name:"Deepika Nair", role:"Operations"},
+  ];
+
+  const teamMembers = React.useMemo(() => {
+    const byAssignee = stats?.by_assignee || {};
+    const liveNames = Object.keys(byAssignee).filter(n => n && n !== "null" && n !== "undefined");
+    if (liveNames.length === 0) return DEFAULT_MEMBERS.map((m, i) => ({ ...m, color: MEMBER_COLORS[i % MEMBER_COLORS.length] }));
+    // Merge: keep defaults if they exist in live data, add new names from live data
+    const defaultNames = new Set(DEFAULT_MEMBERS.map(m => m.name));
+    const merged = [];
+    for (const m of DEFAULT_MEMBERS) {
+      if (liveNames.includes(m.name)) merged.push(m);
+    }
+    for (const name of liveNames) {
+      if (!defaultNames.has(name)) merged.push({ name, role: byAssignee[name]?.role || "Team Member" });
+    }
+    return merged.map((m, i) => ({ ...m, color: MEMBER_COLORS[i % MEMBER_COLORS.length] }));
+  }, [stats]);
+
+  const p1Count = stats?.by_priority?.P1 || 0;
+  const openCount = stats?.by_status?.open || 0;
+
+  return (
+    <div className="app">
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <div className="logo-mark">
+            <div className="logo-icon">P</div>
+            <div>
+              <div className="logo-text">Plum</div>
+              <div className="logo-sub">Escalation Dashboard</div>
+            </div>
+          </div>
+          <div className="api-status">
+            <div className={`status-dot ${apiOnline === null ? 'yellow' : apiOnline ? 'green' : 'red'}`} />
+            <span style={{color: apiOnline ? 'var(--p3)' : apiOnline === false ? 'var(--p1)' : 'var(--p2)', fontSize: 11}}>
+              {apiOnline === null ? 'Connecting...' : apiOnline ? 'API Connected' : 'Mock Mode'}
+            </span>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          <div className="nav-section-label">Views</div>
+          <div className={`nav-item ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>
+            <span className="nav-icon">☰</span> All Messages
+            {openCount > 0 && <span className="nav-badge">{openCount > 99 ? '99+' : openCount}</span>}
+          </div>
+          <div className={`nav-item ${view === 'analytics' ? 'active' : ''}`} onClick={() => setView('analytics')}>
+            <span className="nav-icon">📊</span> Analytics
+          </div>
+
+          <div className="nav-section-label" style={{marginTop:12}}>Priority</div>
+          {priorities.map(p => (
+            <div key={p} className={`nav-item ${filterPriority === p ? 'active' : ''}`}
+              onClick={() => { setFilter(setFilterPriority)(filterPriority === p ? "" : p); setView('list'); }}>
+              <span className="nav-icon" style={{color: p==='P1'?'var(--p1)':p==='P2'?'var(--p2)':'var(--p3)'}}>●</span>
+              {p === 'P1' ? 'Critical' : p === 'P2' ? 'High' : 'Normal'}
+              {stats?.by_priority?.[p] > 0 && (
+                <span className={`nav-badge ${p !== 'P1' ? 'purple' : ''}`}>{stats.by_priority[p]}</span>
+              )}
+            </div>
+          ))}
+
+          <div className="nav-section-label" style={{marginTop:12}}>Categories</div>
+          {categories.map(cat => (
+            <div key={cat} className={`nav-item ${filterCategory === cat ? 'active' : ''}`}
+              onClick={() => { setFilter(setFilterCategory)(filterCategory === cat ? "" : cat); setView('list'); }}>
+              <span className="nav-icon">
+                {cat==='Escalation'?'🚨':cat==='Complaint'?'⚠️':cat==='Follow-up'?'🔔':cat==='Query'?'❓':cat==='Initiation'?'🌱':'👍'}
+              </span>
+              {cat}
+              {stats?.by_category?.[cat] > 0 && <span className="nav-badge purple">{stats.by_category[cat]}</span>}
+            </div>
+          ))}
+
+          <div className="nav-section-label" style={{marginTop:12}}>Sources</div>
+          {sources.map(src => (
+            <div key={src} className={`nav-item ${filterSource === src ? 'active' : ''}`}
+              onClick={() => { setFilter(setFilterSource)(filterSource === src ? "" : src); setView('list'); }}>
+              <span className="nav-icon">{sourceIcon(src)}</span>
+              {src.charAt(0).toUpperCase()+src.slice(1)}
+              {sourcesStatus && (
+                <span style={{marginLeft:'auto', fontSize:9, color: sourcesStatus[src]?.connected ? 'var(--p3)' : 'var(--text3)',
+                  background: sourcesStatus[src]?.connected ? 'var(--p3-bg)' : 'var(--surface3)',
+                  padding:'1px 5px', borderRadius:4, fontWeight:600}}>
+                  {sourcesStatus[src]?.mode || 'mock'}
+                </span>
+              )}
+            </div>
+          ))}
+
+          <div className="nav-section-label" style={{marginTop:12}}>Team Members</div>
+          {teamMembers.map(m => {
+            const memberStats = stats?.by_assignee?.[m.name];
+            const isActive = filterAssignedTo === m.name;
+            return (
+              <div key={m.name} className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => { setFilterAssignedTo(isActive ? "" : m.name); setPage(1); setView('list'); }}>
+                <div style={{
+                  width:22, height:22, borderRadius:'50%',
+                  background: isActive ? m.color : `${m.color}22`,
+                  color: isActive ? '#fff' : m.color,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:10, fontWeight:700, flexShrink:0, transition:'all 0.2s'
+                }}>
+                  {m.name.split(' ').map(w => w[0]).join('').slice(0,2)}
+                </div>
+                <div style={{flex:1, overflow:'hidden', minWidth:0}}>
+                  <div style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:12}}>{m.name.split(' ')[0]} {m.name.split(' ')[1]?.[0]}.</div>
+                  <div style={{fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{m.role}</div>
+                </div>
+                {memberStats?.total > 0 && (
+                  <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, flexShrink:0}}>
+                    <span className="nav-badge purple">{memberStats.total}</span>
+                    {memberStats.p1 > 0 && <span style={{fontSize:9, color:'var(--p1)', fontWeight:700}}>{memberStats.p1} P1</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-footer">
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={handleUploadXlsx} />
+          <button className="sync-btn" onClick={handleSync} disabled={!apiOnline || syncing}>
+            {syncing ? '⟳ Syncing...' : '⟳ Sync Sources'}
+          </button>
+          <button className="sync-btn" onClick={() => apiOnline && fileInputRef.current?.click()}
+            disabled={!apiOnline || uploading}
+            style={{marginTop:6, background:'var(--surface2)', color:'var(--purple)', border:'1.5px solid var(--purple)'}}>
+            {uploading ? '⏳ Importing...' : '📂 Upload xlsx Data'}
+          </button>
+          <div>Total: {stats?.total?.toLocaleString() || '—'} messages</div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main className="main">
+        {/* Top bar */}
+        <div className="topbar">
+          <div>
+            <div className="topbar-title">
+              {view === 'analytics' ? 'Analytics' : filterAssignedTo ? `${filterAssignedTo.split(' ')[0]}'s Tickets` : 'Messages'}
+            </div>
+          </div>
+          {view === 'list' && (
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <div className="search-wrap">
+                <span className="search-icon">🔍</span>
+                <input
+                  placeholder="Search messages, companies..."
+                  value={searchInput}
+                  onChange={e => handleSearchChange(e.target.value)}
+                />
+              </div>
+              <select value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}
+                style={{padding:'6px 10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontSize:12, cursor:'pointer', outline:'none'}}>
+                <option value="created_at">↓ Newest first</option>
+                <option value="category">↓ By Category</option>
+                <option value="priority">↓ By Priority</option>
+              </select>
+            </div>
+          )}
+          <div className="topbar-actions">
+            <button className="btn btn-ghost" onClick={handleAIPipeline}>✦ AI Pipeline</button>
+            {apiOnline && <button className="btn btn-primary" onClick={handleSync} disabled={syncing}>
+              {syncing ? '⟳' : '⟳'} Sync Now
+            </button>}
+          </div>
+        </div>
+
+        {view === 'analytics' ? (
+          <AnalyticsView stats={stats} />
+        ) : (
+          <>
+            {/* Filters */}
+            <div className="filters-bar">
+              <span style={{fontSize:11, color:'var(--text3)', marginRight:2}}>Category:</span>
+              {categories.map(cat => (
+                <span key={cat} className={`filter-chip ${filterCategory === cat ? 'active' : ''}`}
+                  onClick={() => setFilter(setFilterCategory)(filterCategory === cat ? "" : cat)}
+                  style={{fontSize:11}}>
+                  {cat==='Escalation'?'🚨':cat==='Complaint'?'⚠️':cat==='Follow-up'?'🔔':cat==='Query'?'❓':cat==='Initiation'?'🌱':'👍'} {cat}
+                  {stats?.by_category?.[cat] > 0 && <span style={{marginLeft:3,opacity:0.7,fontSize:10}}>({stats.by_category[cat]})</span>}
+                </span>
+              ))}
+              <div className="filter-sep" />
+              {priorities.map(p => (
+                <span key={p} className={`filter-chip ${filterPriority === p ? 'active' : ''}`}
+                  onClick={() => setFilter(setFilterPriority)(filterPriority === p ? "" : p)}
+                  style={{color: p==='P1'?'var(--p1)':p==='P2'?'var(--p2)':'var(--p3)'}}>
+                  {p}
+                </span>
+              ))}
+              <div className="filter-sep" />
+              {statuses.map(s => (
+                <span key={s} className={`filter-chip ${filterStatus === s ? 'active' : ''}`}
+                  onClick={() => setFilter(setFilterStatus)(filterStatus === s ? "" : s)}>
+                  {s}
+                </span>
+              ))}
+              <div className="filter-sep" />
+              {sources.map(s => (
+                <span key={s} className={`filter-chip ${filterSource === s ? 'active' : ''}`}
+                  onClick={() => setFilter(setFilterSource)(filterSource === s ? "" : s)}>
+                  {sourceIcon(s)} {s}
+                </span>
+              ))}
+              {(filterSource || filterCategory || filterPriority || filterStatus || filterAssignedTo || search) && (
+                <button className="btn btn-danger-ghost" style={{padding:'4px 10px', fontSize:11}}
+                  onClick={() => { setFilterSource(""); setFilterCategory(""); setFilterPriority(""); setFilterStatus(""); setFilterAssignedTo(""); setSearch(""); setSearchInput(""); setPage(1); }}>
+                  ✕ Clear
+                </button>
+              )}
+              <span className="filter-count">{total.toLocaleString()} results</span>
+            </div>
+
+            <div className="content-area">
+              {/* List */}
+              <div className="list-panel">
+                <div className="list-scroll">
+                  {loading ? (
+                    <div className="list-empty"><div className="spinner" style={{width:24,height:24,margin:'60px auto'}} /></div>
+                  ) : records.length === 0 ? (
+                    <div className="list-empty">
+                      <div className="empty-icon">🔍</div>
+                      <div>No messages found</div>
+                    </div>
+                  ) : records.map(r => (
+                    <MsgCard key={r.id} record={r} selected={selected?.id === r.id}
+                      onClick={() => { setSelected(r); setReplyText(r.ai_reply_draft || ""); }} />
+                  ))}
+                </div>
+                <div className="pagination">
+                  <span>Page {page} of {totalPages}</span>
+                  <div className="pagination-btns">
+                    <button className="page-btn" disabled={page <= 1} onClick={() => setPage(p => p-1)}>‹</button>
+                    {Array.from({length: Math.min(5, totalPages)}, (_, i) => {
+                      let p;
+                      if (totalPages <= 5) p = i + 1;
+                      else if (page <= 3) p = i + 1;
+                      else if (page >= totalPages - 2) p = totalPages - 4 + i;
+                      else p = page - 2 + i;
+                      return (
+                        <button key={p} className={`page-btn ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+                      );
+                    })}
+                    <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p+1)}>›</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detail */}
+              <div className="detail-panel">
+                {selected ? (
+                  <DetailPanel
+                    record={selected}
+                    replyText={replyText}
+                    setReplyText={setReplyText}
+                    onSummarise={() => handleSummarise(selected.id)}
+                    onStatusChange={(s) => handleStatusChange(selected.id, s)}
+                    aiLoading={aiLoading}
+                    apiOnline={apiOnline}
+                  />
+                ) : (
+                  <div className="detail-empty">
+                    <div className="empty-icon">💬</div>
+                    <div style={{color:'var(--text2)', fontWeight:500}}>Select a message to view details</div>
+                    <div style={{fontSize:12}}>Click any message on the left</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+const AVATAR_COLORS = [
+  ['#7c5cfc','#2d1f6e'], ['#ff4d6d','#6e1f2d'], ['#ff9f43','#6e3d1f'],
+  ['#48bb78','#1f4d30'], ['#60a5fa','#1f3a6e'], ['#f472b6','#6e1f4a'],
+  ['#34d399','#1f5240'], ['#a78bfa','#3d1f6e'],
+];
+function avatarColor(name) {
+  let h = 0;
+  for (let i = 0; i < (name||'').length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+function initials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+}
+
+function MsgCard({ record: r, selected, onClick }) {
+  const [fg, bg] = avatarColor(r.sender_name);
+  const priorityCls = r.priority === 'P1' ? 'priority-p1' : r.priority === 'P2' ? 'priority-p2' : '';
+  return (
+    <div className={`msg-card ${priorityCls} ${selected ? 'selected' : ''}`} onClick={onClick}>
+      <div className="msg-card-row1">
+        <div className="msg-avatar" style={{background: bg, color: fg}}>
+          {initials(r.sender_name)}
+        </div>
+        <div className="msg-card-meta">
+          <div className="msg-company">{r.company}</div>
+          <div className="msg-sender">{r.sender_name}</div>
+        </div>
+        <span className="msg-time">{timeAgo(r.created_at)}</span>
+      </div>
+      <div className="msg-subject">{r.subject}</div>
+      <div className="msg-preview">{r.body}</div>
+      <div className="msg-badges">
+        <span className={priorityClass(r.priority)}>{r.priority}</span>
+        <span className={sourceClass(r.source)}>{sourceIcon(r.source)} {r.source}</span>
+        <span className="badge badge-category">{r.category}</span>
+        <span className={statusClass(r.status)}>{r.status}</span>
+        {r.is_live && <span className="badge badge-live">● live</span>}
+      </div>
+    </div>
+  );
+}
+
+function DetailPanel({ record: r, replyText, setReplyText, onSummarise, onStatusChange, aiLoading, apiOnline }) {
+  const [showReply, setShowReply] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setShowReply(false);
+    setCopied(false);
+    if (r.ai_reply_draft) setReplyText(r.ai_reply_draft);
+  }, [r.id]);
+
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(replyText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const [senderFg, senderBg] = avatarColor(r.sender_name);
+  const [ownerFg, ownerBg] = avatarColor(r.assigned_to || '');
+
+  return (
+    <>
+      {/* Header */}
+      <div className="detail-header">
+        <div className="detail-sender-row">
+          <div className="detail-avatar" style={{background: senderBg, color: senderFg}}>
+            {initials(r.sender_name)}
+          </div>
+          <div className="detail-sender-info">
+            <div className="detail-company">{r.company}</div>
+            <div className="detail-sender-email">{r.sender_name} · {r.sender_email}</div>
+          </div>
+          <select className="status-select" value={r.status} onChange={e => onStatusChange(e.target.value)}>
+            <option value="open">open</option>
+            <option value="in-progress">in-progress</option>
+            <option value="resolved">resolved</option>
+          </select>
+        </div>
+
+        <div className="detail-subject">{r.subject}</div>
+
+        <div className="detail-meta">
+          <span className={priorityClass(r.priority)}>{r.priority}</span>
+          <span className={sourceClass(r.source)}>{sourceIcon(r.source)} {r.source}</span>
+          <span className="badge badge-category">{r.category}</span>
+          {r.is_live && <span className="badge badge-live">● live</span>}
+          {r.channel && <span className="badge badge-category">#{r.channel}</span>}
+        </div>
+      </div>
+
+      <div className="detail-scroll">
+        {/* Time received */}
+        <div className="detail-time-row">
+          <div className="detail-time-dot" />
+          Received {r.created_at ? new Date(r.created_at).toLocaleString('en-IN', {
+            day:'numeric', month:'short', year:'numeric',
+            hour:'2-digit', minute:'2-digit'
+          }) : '—'}
+          <span style={{marginLeft:'auto', fontSize:10}}>{timeAgo(r.created_at)}</span>
+        </div>
+
+        {/* Assigned owner */}
+        <div className="detail-section">
+          <div className="detail-section-title">Assigned To</div>
+          <div className="owner-card">
+            <div className="owner-avatar" style={{background: ownerBg, color: ownerFg}}>
+              {initials(r.assigned_to || '')}
+            </div>
+            <div>
+              <div className="owner-name">{r.assigned_to || '—'}</div>
+              <div className="owner-role">{r.assigned_role || '—'}</div>
+            </div>
+            <div className="owner-status">Active</div>
+          </div>
+        </div>
+
+        {/* Message body */}
+        <div className="detail-section">
+          <div className="detail-section-title">Message</div>
+          <div className="detail-body">{r.body}</div>
+        </div>
+
+        {/* AI Summary */}
+        <div className="detail-section">
+          <div className="detail-section-title" style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+            <span>AI Analysis</span>
+            {r.ai_summary && <span style={{fontSize:10, color:'var(--purple-light)', fontWeight:500}}>powered by Claude</span>}
+          </div>
+          {r.ai_summary ? (
+            <div className="ai-box">
+              <div className="ai-box-label">Summary</div>
+              <p>{r.ai_summary}</p>
+            </div>
+          ) : aiLoading ? (
+            <div className="ai-loading"><div className="spinner" /> Analysing with Claude...</div>
+          ) : (
+            <button className="btn btn-ghost" onClick={onSummarise} style={{fontSize:12, width:'100%', justifyContent:'center'}}>
+              ✦ Generate AI Summary {!apiOnline ? '(mock)' : ''}
+            </button>
+          )}
+        </div>
+
+        {/* Reply Draft */}
+        <div className="detail-section">
+          <div className="detail-section-title" style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+            <span>Reply Draft</span>
+            {(r.ai_reply_draft || showReply) && replyText && (
+              <button className={`copy-btn ${copied ? 'copied' : ''}`} onClick={handleCopy}>
+                {copied ? '✓ Copied' : 'Copy'}
+              </button>
+            )}
+          </div>
+          {r.ai_reply_draft || showReply ? (
+            <div className="reply-box">
+              <textarea
+                value={replyText}
+                onChange={e => setReplyText(e.target.value)}
+                placeholder="AI reply draft will appear here..."
+              />
+              <div className="reply-actions">
+                <button className="btn btn-primary" style={{fontSize:12}}>✉ Send Reply</button>
+                <button className="btn btn-ghost" style={{fontSize:12}} onClick={onSummarise}>✦ Regenerate</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-ghost" onClick={() => { onSummarise(r.id); setShowReply(true); }}
+              style={{fontSize:12, width:'100%', justifyContent:'center'}}>
+              ✦ Generate Reply Draft {!apiOnline ? '(mock)' : ''}
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DonutChart({ segments, size=150, thickness=22 }) {
+  const r = (size - thickness) / 2;
+  const cx = size / 2, cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  const total = segments.reduce((s, d) => s + d.value, 0);
+  let cum = 0;
+  const slices = segments.map((seg, i) => {
+    const pct = total > 0 ? seg.value / total : 0;
+    const dash = pct * circ;
+    const offset = circ - (cum / (total || 1)) * circ + circ / 4;
+    cum += seg.value;
+    return <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={seg.color}
+      strokeWidth={thickness} strokeDasharray={`${dash} ${circ - dash}`}
+      strokeDashoffset={offset} style={{transition:'stroke-dasharray 0.5s ease'}} />;
+  });
+  return (
+    <div style={{position:'relative', width:size, height:size, flexShrink:0}}>
+      <svg width={size} height={size}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--surface2)" strokeWidth={thickness} />
+        {slices}
+      </svg>
+      <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center'}}>
+        <div style={{fontSize:18,fontWeight:700,color:'var(--text)',lineHeight:1}}>{total.toLocaleString()}</div>
+        <div style={{fontSize:9,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:2}}>total</div>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsView({ stats }) {
+  if (!stats) return <div className="analytics-view"><div className="ai-loading"><div className="spinner"/>Loading...</div></div>;
+
+  const catColors = {
+    Escalation:'#ff4d6d', Complaint:'#ff9f43', 'Follow-up':'#7c5cfc',
+    Query:'#60a5fa', Initiation:'#34d399', Appreciation:'#48bb78'
+  };
+  const catSegs = Object.entries(stats.by_category).map(([k,v])=>({label:k,value:v,color:catColors[k]||'#888'}));
+  const priSegs = [
+    {label:'P1 Critical',value:stats.by_priority?.P1||0,color:'#ff4d6d'},
+    {label:'P2 High',value:stats.by_priority?.P2||0,color:'#ff9f43'},
+    {label:'P3 Normal',value:stats.by_priority?.P3||0,color:'#48bb78'},
+  ];
+  const total = stats.total || 1;
+  const resRate = Math.round((stats.by_status?.resolved||0)/total*100);
+
+  const statCards = [
+    {label:'Total Messages', value:stats.total?.toLocaleString(), sub:'All sources', color:'var(--purple-light)', accent:'#7c5cfc', icon:'📨'},
+    {label:'P1 Critical', value:stats.p1_open, sub:'Unresolved', color:'var(--p1)', accent:'#ff4d6d', icon:'🔴'},
+    {label:'Open', value:stats.by_status?.open?.toLocaleString(), sub:'Needs action', color:'var(--open)', accent:'#ff9f43', icon:'📬'},
+    {label:'In Progress', value:stats.by_status?.['in-progress']?.toLocaleString(), sub:'Being handled', color:'var(--purple)', accent:'#7c5cfc', icon:'⚡'},
+    {label:'Resolved', value:stats.by_status?.resolved?.toLocaleString(), sub:'Closed', color:'var(--p3)', accent:'#48bb78', icon:'✅'},
+    {label:'Resolution Rate', value:`${resRate}%`, sub:'Resolved / Total', color:'var(--p3)', accent:'#48bb78', icon:'📊'},
+  ];
+
+  const srcData = [
+    {label:'Email', icon:'✉️', count:stats.by_source?.email||0, color:'var(--email)'},
+    {label:'Slack', icon:'#', count:stats.by_source?.slack||0, color:'var(--slack)'},
+    {label:'WhatsApp', icon:'💬', count:stats.by_source?.whatsapp||0, color:'var(--whatsapp)'},
+  ];
+
+  const statusTotal = (stats.by_status?.open||0)+(stats.by_status?.['in-progress']||0)+(stats.by_status?.resolved||0)||1;
+
+  const teamMembers = [
+    ['Ipsita Sahu','Claims Lead','#ff4d6d'],
+    ['Manashi Goswami','Compliance','#60a5fa'],
+    ['Mikhel Dhiman','Tech Support','#4ade80'],
+    ['Arun Saseedharan','Senior AM','#7c5cfc'],
+    ['Vaishnavi Bhat','Account Manager','#ff9f43'],
+    ['Rajorshi Chowdhury','Junior AM','#34d399'],
+    ['Subash P','Customer Success','#48bb78'],
+    ['Deepika Nair','Operations','#9090b0'],
+  ];
+
+  return (
+    <div className="analytics-view">
+      {/* Stat cards */}
+      <div className="analytics-grid" style={{marginBottom:20}}>
+        {statCards.map(c => (
+          <div key={c.label} className="stat-card" style={{'--card-accent':c.accent}}>
+            <div className="stat-card-icon">{c.icon}</div>
+            <div className="stat-card-value" style={{color:c.color}}>{c.value}</div>
+            <div className="stat-card-label" style={{marginTop:4,marginBottom:2}}>{c.label}</div>
+            <div className="stat-card-sub">{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Donut charts row */}
+      <div className="chart-row">
+        <div className="chart-card">
+          <div className="chart-card-title">By Category</div>
+          <div className="donut-container">
+            <DonutChart segments={catSegs} size={150} thickness={22} />
+            <div className="donut-legend">
+              {catSegs.map(s => (
+                <div key={s.label} className="donut-legend-item">
+                  <div className="donut-legend-dot" style={{background:s.color}} />
+                  <span className="donut-legend-label">{s.label}</span>
+                  <span className="donut-legend-count">{s.value}</span>
+                  <span className="donut-legend-pct">{total>0?Math.round(s.value/total*100):0}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="chart-card">
+          <div className="chart-card-title">By Priority</div>
+          <div className="donut-container">
+            <DonutChart segments={priSegs} size={150} thickness={22} />
+            <div className="donut-legend">
+              {priSegs.map(s => (
+                <div key={s.label} className="donut-legend-item">
+                  <div className="donut-legend-dot" style={{background:s.color}} />
+                  <span className="donut-legend-label">{s.label}</span>
+                  <span className="donut-legend-count">{s.value}</span>
+                  <span className="donut-legend-pct">{total>0?Math.round(s.value/total*100):0}%</span>
+                </div>
+              ))}
+              {/* Status breakdown */}
+              <div style={{marginTop:16,paddingTop:14,borderTop:'1px solid var(--border)'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>Status Breakdown</div>
+                <div className="status-seg-bar">
+                  <div className="status-seg" style={{flex:stats.by_status?.open||0,background:'var(--open)',minWidth:stats.by_status?.open?4:0}} />
+                  <div className="status-seg" style={{flex:stats.by_status?.['in-progress']||0,background:'var(--purple)',minWidth:stats.by_status?.['in-progress']?4:0}} />
+                  <div className="status-seg" style={{flex:stats.by_status?.resolved||0,background:'var(--p3)',minWidth:stats.by_status?.resolved?4:0}} />
+                </div>
+                <div className="status-legend-row">
+                  {[['Open','var(--open)',stats.by_status?.open],['In Progress','var(--purple)',stats.by_status?.['in-progress']],['Resolved','var(--p3)',stats.by_status?.resolved]].map(([l,c,v])=>(
+                    <div key={l} className="status-legend-item">
+                      <div className="status-legend-dot" style={{background:c}} />
+                      <span>{l}</span>
+                      <strong style={{color:'var(--text)'}}>{v||0}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sources */}
+      <div className="chart-card" style={{marginBottom:16}}>
+        <div className="chart-card-title">Messages by Source</div>
+        <div className="source-tiles">
+          {srcData.map(s => (
+            <div key={s.label} className="source-tile">
+              <div className="source-tile-icon">{s.icon}</div>
+              <div className="source-tile-count" style={{color:s.color}}>{s.count.toLocaleString()}</div>
+              <div className="source-tile-label">{s.label}</div>
+              <div style={{fontSize:10,color:'var(--text3)',marginTop:2}}>
+                {total>0?Math.round(s.count/total*100):0}% of total
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Team */}
+      <div className="chart-card" style={{marginBottom:24}}>
+        <div className="chart-card-title">Team Members</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+          {teamMembers.map(([name,role,color])=>(
+            <div key={name} style={{
+              background:'var(--surface2)',padding:'10px 14px',borderRadius:10,
+              border:'1px solid var(--border)',display:'flex',alignItems:'center',gap:12,
+              transition:'border-color 0.15s'
+            }}>
+              <div style={{
+                width:36,height:36,borderRadius:'50%',flexShrink:0,
+                background:`${color}22`,color,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:13,fontWeight:700,border:`1.5px solid ${color}44`
+              }}>{name[0]}</div>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:'var(--text)'}}>{name}</div>
+                <div style={{fontSize:11,color:'var(--text3)',marginTop:1}}>{role}</div>
+              </div>
+              <div style={{marginLeft:'auto',width:6,height:6,borderRadius:'50%',background:color,boxShadow:`0 0 6px ${color}`}} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+try {
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+} catch(e) {
+  document.getElementById('root').innerHTML = '<div style="color:#ff4d6d;padding:40px;font-family:monospace">Render error: ' + e.message + '</div>';
+  console.error(e);
+}
+</script>
+</body>
+</html>
