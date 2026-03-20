@@ -235,8 +235,10 @@ def list_escalations(
     status: Optional[str] = Query(None),
     assigned_to: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
+    from sqlalchemy import case
     q = db.query(Escalation)
     if source:
         q = q.filter(Escalation.source == source)
@@ -258,8 +260,29 @@ def list_escalations(
         )
 
     total = q.count()
+
+    if sort_by == "category":
+        order_col = case(
+            (Escalation.category == "Escalation", 1),
+            (Escalation.category == "Complaint", 2),
+            (Escalation.category == "Follow-up", 3),
+            (Escalation.category == "Query", 4),
+            (Escalation.category == "Initiation", 5),
+            (Escalation.category == "Appreciation", 6),
+            else_=7
+        )
+    elif sort_by == "priority":
+        order_col = case(
+            (Escalation.priority == "P1", 1),
+            (Escalation.priority == "P2", 2),
+            (Escalation.priority == "P3", 3),
+            else_=4
+        )
+    else:
+        order_col = Escalation.created_at.desc()
+
     items = (
-        q.order_by(Escalation.created_at.desc())
+        q.order_by(order_col)
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()

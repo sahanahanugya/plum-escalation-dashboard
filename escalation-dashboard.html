@@ -683,6 +683,7 @@ function App() {
   const [filterPriority, setFilterPriority] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterAssignedTo, setFilterAssignedTo] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -741,6 +742,7 @@ function App() {
       if (filterPriority) params.set("priority", filterPriority);
       if (filterStatus) params.set("status", filterStatus);
       if (filterAssignedTo) params.set("assigned_to", filterAssignedTo);
+      if (sortBy && sortBy !== "created_at") params.set("sort_by", sortBy);
       if (search) params.set("search", search);
       fetch(`${API}/api/escalations?${params}`)
         .then(r => r.json())
@@ -768,6 +770,11 @@ function App() {
           r.company.toLowerCase().includes(q)
         );
       }
+      const catOrder = ["Escalation","Complaint","Follow-up","Query","Initiation","Appreciation"];
+      const priOrder = ["P1","P2","P3"];
+      if (sortBy === "category") filtered = [...filtered].sort((a,b) => catOrder.indexOf(a.category) - catOrder.indexOf(b.category));
+      else if (sortBy === "priority") filtered = [...filtered].sort((a,b) => priOrder.indexOf(a.priority) - priOrder.indexOf(b.priority));
+      else filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
       const start = (page - 1) * pageSize;
       const pageItems = filtered.slice(start, start + pageSize);
       setRecords(pageItems);
@@ -775,7 +782,7 @@ function App() {
       setTotalPages(Math.ceil(filtered.length / pageSize));
       setLoading(false);
     }
-  }, [apiOnline, page, pageSize, filterSource, filterCategory, filterPriority, filterStatus, filterAssignedTo, search]);
+  }, [apiOnline, page, pageSize, filterSource, filterCategory, filterPriority, filterStatus, filterAssignedTo, sortBy, search]);
 
   useEffect(() => {
     if (apiOnline !== null) loadRecords();
@@ -997,13 +1004,21 @@ function App() {
             </div>
           </div>
           {view === 'list' && (
-            <div className="search-wrap">
-              <span className="search-icon">🔍</span>
-              <input
-                placeholder="Search messages, companies..."
-                value={searchInput}
-                onChange={e => handleSearchChange(e.target.value)}
-              />
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <div className="search-wrap">
+                <span className="search-icon">🔍</span>
+                <input
+                  placeholder="Search messages, companies..."
+                  value={searchInput}
+                  onChange={e => handleSearchChange(e.target.value)}
+                />
+              </div>
+              <select value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}
+                style={{padding:'6px 10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontSize:12, cursor:'pointer', outline:'none'}}>
+                <option value="created_at">↓ Newest first</option>
+                <option value="category">↓ By Category</option>
+                <option value="priority">↓ By Priority</option>
+              </select>
             </div>
           )}
           <div className="topbar-actions">
@@ -1020,11 +1035,13 @@ function App() {
           <>
             {/* Filters */}
             <div className="filters-bar">
-              <span style={{fontSize:11, color:'var(--text3)', marginRight:2}}>Filter:</span>
-              {sources.map(s => (
-                <span key={s} className={`filter-chip ${filterSource === s ? 'active' : ''}`}
-                  onClick={() => setFilter(setFilterSource)(filterSource === s ? "" : s)}>
-                  {sourceIcon(s)} {s}
+              <span style={{fontSize:11, color:'var(--text3)', marginRight:2}}>Category:</span>
+              {categories.map(cat => (
+                <span key={cat} className={`filter-chip ${filterCategory === cat ? 'active' : ''}`}
+                  onClick={() => setFilter(setFilterCategory)(filterCategory === cat ? "" : cat)}
+                  style={{fontSize:11}}>
+                  {cat==='Escalation'?'🚨':cat==='Complaint'?'⚠️':cat==='Follow-up'?'🔔':cat==='Query'?'❓':cat==='Initiation'?'🌱':'👍'} {cat}
+                  {stats?.by_category?.[cat] > 0 && <span style={{marginLeft:3,opacity:0.7,fontSize:10}}>({stats.by_category[cat]})</span>}
                 </span>
               ))}
               <div className="filter-sep" />
@@ -1042,9 +1059,16 @@ function App() {
                   {s}
                 </span>
               ))}
-              {(filterSource || filterCategory || filterPriority || filterStatus || search) && (
+              <div className="filter-sep" />
+              {sources.map(s => (
+                <span key={s} className={`filter-chip ${filterSource === s ? 'active' : ''}`}
+                  onClick={() => setFilter(setFilterSource)(filterSource === s ? "" : s)}>
+                  {sourceIcon(s)} {s}
+                </span>
+              ))}
+              {(filterSource || filterCategory || filterPriority || filterStatus || filterAssignedTo || search) && (
                 <button className="btn btn-danger-ghost" style={{padding:'4px 10px', fontSize:11}}
-                  onClick={() => { setFilterSource(""); setFilterCategory(""); setFilterPriority(""); setFilterStatus(""); setSearch(""); setSearchInput(""); setPage(1); }}>
+                  onClick={() => { setFilterSource(""); setFilterCategory(""); setFilterPriority(""); setFilterStatus(""); setFilterAssignedTo(""); setSearch(""); setSearchInput(""); setPage(1); }}>
                   ✕ Clear
                 </button>
               )}
