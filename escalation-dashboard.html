@@ -896,16 +896,36 @@ function App() {
   const sources = ["email","slack","whatsapp"];
   const priorities = ["P1","P2","P3"];
   const statuses = ["open","in-progress","resolved"];
-  const teamMembers = [
-    {name:"Ipsita Sahu", role:"Claims Lead", color:"#c53030"},
-    {name:"Manashi Goswami", role:"Compliance", color:"#2b6cb0"},
-    {name:"Mikhel Dhiman", role:"Tech Support", color:"#2f855a"},
-    {name:"Arun Saseedharan", role:"Senior AM", color:"#6d4ef0"},
-    {name:"Vaishnavi Bhat", role:"Account Manager", color:"#c05621"},
-    {name:"Rajorshi Chowdhury", role:"Junior AM", color:"#276749"},
-    {name:"Subash P", role:"Customer Success", color:"#276749"},
-    {name:"Deepika Nair", role:"Operations", color:"#4a4868"},
+  // Palette cycles through colours for any number of team members
+  const MEMBER_COLORS = ["#c53030","#2b6cb0","#2f855a","#6d4ef0","#c05621","#276749","#b7791f","#4a4868","#97266d","#2c7a7b","#744210","#1a365d"];
+
+  // Build team list dynamically from stats (whoever has tickets) + fallback defaults
+  const DEFAULT_MEMBERS = [
+    {name:"Ipsita Sahu", role:"Claims Lead"},
+    {name:"Manashi Goswami", role:"Compliance"},
+    {name:"Mikhel Dhiman", role:"Tech Support"},
+    {name:"Arun Saseedharan", role:"Senior AM"},
+    {name:"Vaishnavi Bhat", role:"Account Manager"},
+    {name:"Rajorshi Chowdhury", role:"Junior AM"},
+    {name:"Subash P", role:"Customer Success"},
+    {name:"Deepika Nair", role:"Operations"},
   ];
+
+  const teamMembers = React.useMemo(() => {
+    const byAssignee = stats?.by_assignee || {};
+    const liveNames = Object.keys(byAssignee).filter(n => n && n !== "null" && n !== "undefined");
+    if (liveNames.length === 0) return DEFAULT_MEMBERS.map((m, i) => ({ ...m, color: MEMBER_COLORS[i % MEMBER_COLORS.length] }));
+    // Merge: keep defaults if they exist in live data, add new names from live data
+    const defaultNames = new Set(DEFAULT_MEMBERS.map(m => m.name));
+    const merged = [];
+    for (const m of DEFAULT_MEMBERS) {
+      if (liveNames.includes(m.name)) merged.push(m);
+    }
+    for (const name of liveNames) {
+      if (!defaultNames.has(name)) merged.push({ name, role: byAssignee[name]?.role || "Team Member" });
+    }
+    return merged.map((m, i) => ({ ...m, color: MEMBER_COLORS[i % MEMBER_COLORS.length] }));
+  }, [stats]);
 
   const p1Count = stats?.by_priority?.P1 || 0;
   const openCount = stats?.by_status?.open || 0;

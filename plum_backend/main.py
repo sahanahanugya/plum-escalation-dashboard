@@ -201,13 +201,20 @@ def get_stats(db: Session = Depends(get_db)):
         Escalation.status != "resolved"
     ).count()
 
-    team_members = [
-        "Ipsita Sahu", "Manashi Goswami", "Mikhel Dhiman", "Arun Saseedharan",
-        "Vaishnavi Bhat", "Rajorshi Chowdhury", "Subash P", "Deepika Nair",
-    ]
+    # Dynamically get ALL unique assignees from the database
+    from sqlalchemy import func, distinct
+    assignee_rows = (
+        db.query(Escalation.assigned_to, Escalation.assigned_role)
+        .filter(Escalation.assigned_to != None)
+        .distinct(Escalation.assigned_to)
+        .all()
+    )
     by_assignee = {}
-    for member in team_members:
+    for member, role in assignee_rows:
+        if not member:
+            continue
         by_assignee[member] = {
+            "role": role or "",
             "total": db.query(Escalation).filter(Escalation.assigned_to == member).count(),
             "open": db.query(Escalation).filter(Escalation.assigned_to == member, Escalation.status == "open").count(),
             "in_progress": db.query(Escalation).filter(Escalation.assigned_to == member, Escalation.status == "in-progress").count(),
