@@ -1,14 +1,56 @@
 """
-Generates 1200 realistic B2B health insurance mock messages for Plum.
-Covers Email, Slack, WhatsApp channels with real-world scenarios.
+Generates realistic B2B health insurance mock messages for Plum.
+If mock_data.json exists, loads from it (editable). Otherwise generates randomly.
 """
 
 import uuid
+import json
+import os
 import random
 from datetime import datetime, timedelta
 from database import Escalation
 
 random.seed(42)
+
+
+def load_from_json() -> list:
+    """Load mock records from mock_data.json if it exists."""
+    json_path = os.path.join(os.path.dirname(__file__), "mock_data.json")
+    if not os.path.exists(json_path):
+        return []
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        records = []
+        now = datetime.utcnow()
+        for i, item in enumerate(data):
+            created = now - timedelta(hours=i * 2)
+            records.append(Escalation(
+                id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"mock-json-{i}")),
+                source=item.get("source", "email"),
+                sender_name=item.get("sender_name", "Unknown"),
+                sender_email=item.get("sender_email", ""),
+                company=item.get("company", ""),
+                subject=item.get("subject", ""),
+                body=item.get("body", ""),
+                category=item.get("category", "Query"),
+                priority=item.get("priority", "P3"),
+                status=item.get("status", "open"),
+                assigned_to=item.get("assigned_to"),
+                assigned_role=item.get("assigned_role"),
+                ai_summary=None,
+                ai_reply_draft=None,
+                channel=item.get("channel"),
+                thread_ts=None,
+                created_at=created,
+                updated_at=created,
+                is_live=False,
+            ))
+        print(f"[Mock] Loaded {len(records)} records from mock_data.json")
+        return records
+    except Exception as e:
+        print(f"[Mock] Failed to load mock_data.json: {e}")
+        return []
 
 # ──────────────────────────────────────────────
 # Reference data
@@ -424,6 +466,11 @@ def _fill(template: str, company: str) -> str:
 
 
 def generate_mock_records(count: int = 1200) -> list:
+    # Try loading from editable JSON file first
+    json_records = load_from_json()
+    if json_records:
+        return json_records
+    # Fall back to random generation
     records = []
     now = datetime.utcnow()
 
