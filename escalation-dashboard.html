@@ -10,31 +10,31 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js" crossorigin></script>
   <style>
     :root {
-      --bg: #0b0b16;
-      --surface: #13131f;
-      --surface2: #1a1a2e;
-      --surface3: #20203a;
-      --border: rgba(255,255,255,0.07);
-      --border2: rgba(255,255,255,0.12);
-      --purple: #7c5cfc;
-      --purple-light: #9b7dff;
-      --purple-dim: rgba(124,92,252,0.15);
-      --purple-glow: rgba(124,92,252,0.3);
-      --text: #e8e8f0;
-      --text2: #9090b0;
-      --text3: #606080;
-      --p1: #ff4d6d;
-      --p1-bg: rgba(255,77,109,0.12);
-      --p2: #ff9f43;
-      --p2-bg: rgba(255,159,67,0.12);
-      --p3: #48bb78;
-      --p3-bg: rgba(72,187,120,0.12);
-      --email: #60a5fa;
-      --slack: #4ade80;
-      --whatsapp: #34d399;
-      --open: #ff9f43;
-      --progress: #7c5cfc;
-      --resolved: #48bb78;
+      --bg: #f7f4ef;
+      --surface: #ffffff;
+      --surface2: #f2ede6;
+      --surface3: #e8e1d8;
+      --border: rgba(0,0,0,0.08);
+      --border2: rgba(0,0,0,0.14);
+      --purple: #6d4ef0;
+      --purple-light: #5a3dd8;
+      --purple-dim: rgba(109,78,240,0.1);
+      --purple-glow: rgba(109,78,240,0.2);
+      --text: #1c1a2e;
+      --text2: #4a4868;
+      --text3: #8a88aa;
+      --p1: #c53030;
+      --p1-bg: rgba(197,48,48,0.08);
+      --p2: #c05621;
+      --p2-bg: rgba(192,86,33,0.08);
+      --p3: #276749;
+      --p3-bg: rgba(39,103,73,0.08);
+      --email: #2b6cb0;
+      --slack: #2f855a;
+      --whatsapp: #276749;
+      --open: #c05621;
+      --progress: #6d4ef0;
+      --resolved: #276749;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -48,6 +48,12 @@
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+    .sidebar { box-shadow: 1px 0 0 var(--border); }
+    .topbar { box-shadow: 0 1px 0 var(--border); }
+    .msg-card:hover { background: #f7f3ed; }
+    .msg-card.selected { background: var(--purple-dim); }
+    .search-wrap input { background: var(--surface2); }
+    .search-wrap input:focus { background: #fff; border-color: var(--purple); }
     button { font-family: inherit; cursor: pointer; border: none; outline: none; }
     input { font-family: inherit; outline: none; }
 
