@@ -200,6 +200,20 @@ def get_stats(db: Session = Depends(get_db)):
         Escalation.status != "resolved"
     ).count()
 
+    team_members = [
+        "Ipsita Sahu", "Manashi Goswami", "Mikhel Dhiman", "Arun Saseedharan",
+        "Vaishnavi Bhat", "Rajorshi Chowdhury", "Subash P", "Deepika Nair",
+    ]
+    by_assignee = {}
+    for member in team_members:
+        by_assignee[member] = {
+            "total": db.query(Escalation).filter(Escalation.assigned_to == member).count(),
+            "open": db.query(Escalation).filter(Escalation.assigned_to == member, Escalation.status == "open").count(),
+            "in_progress": db.query(Escalation).filter(Escalation.assigned_to == member, Escalation.status == "in-progress").count(),
+            "resolved": db.query(Escalation).filter(Escalation.assigned_to == member, Escalation.status == "resolved").count(),
+            "p1": db.query(Escalation).filter(Escalation.assigned_to == member, Escalation.priority == "P1").count(),
+        }
+
     return {
         "total": total,
         "p1_open": p1_open,
@@ -207,6 +221,7 @@ def get_stats(db: Session = Depends(get_db)):
         "by_priority": by_priority,
         "by_status": by_status,
         "by_source": by_source,
+        "by_assignee": by_assignee,
     }
 
 
@@ -218,6 +233,7 @@ def list_escalations(
     category: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    assigned_to: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -230,6 +246,8 @@ def list_escalations(
         q = q.filter(Escalation.priority == priority)
     if status:
         q = q.filter(Escalation.status == status)
+    if assigned_to:
+        q = q.filter(Escalation.assigned_to == assigned_to)
     if search:
         like = f"%{search}%"
         q = q.filter(

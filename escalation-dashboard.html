@@ -682,6 +682,7 @@ function App() {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterAssignedTo, setFilterAssignedTo] = useState("");
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -706,7 +707,7 @@ function App() {
       fetch(`${API}/api/stats`).then(r => r.json()).then(setStats).catch(() => {});
     } else if (apiOnline === false) {
       // compute from mock
-      const s = { total: ALL_MOCK.length, p1_open: 0, by_category: {}, by_priority: {}, by_status: {}, by_source: {} };
+      const s = { total: ALL_MOCK.length, p1_open: 0, by_category: {}, by_priority: {}, by_status: {}, by_source: {}, by_assignee: {} };
       for (const cat of ["Escalation","Complaint","Follow-up","Query","Initiation","Appreciation"]) s.by_category[cat] = 0;
       for (const p of ["P1","P2","P3"]) s.by_priority[p] = 0;
       for (const st of ["open","in-progress","resolved"]) s.by_status[st] = 0;
@@ -717,6 +718,14 @@ function App() {
         s.by_status[r.status] = (s.by_status[r.status] || 0) + 1;
         s.by_source[r.source] = (s.by_source[r.source] || 0) + 1;
         if (r.priority === "P1" && r.status !== "resolved") s.p1_open++;
+        if (r.assigned_to) {
+          if (!s.by_assignee[r.assigned_to]) s.by_assignee[r.assigned_to] = {total:0, open:0, in_progress:0, resolved:0, p1:0};
+          s.by_assignee[r.assigned_to].total++;
+          if (r.status === "open") s.by_assignee[r.assigned_to].open++;
+          else if (r.status === "in-progress") s.by_assignee[r.assigned_to].in_progress++;
+          else if (r.status === "resolved") s.by_assignee[r.assigned_to].resolved++;
+          if (r.priority === "P1") s.by_assignee[r.assigned_to].p1++;
+        }
       }
       setStats(s);
     }
@@ -731,6 +740,7 @@ function App() {
       if (filterCategory) params.set("category", filterCategory);
       if (filterPriority) params.set("priority", filterPriority);
       if (filterStatus) params.set("status", filterStatus);
+      if (filterAssignedTo) params.set("assigned_to", filterAssignedTo);
       if (search) params.set("search", search);
       fetch(`${API}/api/escalations?${params}`)
         .then(r => r.json())
@@ -748,6 +758,7 @@ function App() {
       if (filterCategory) filtered = filtered.filter(r => r.category === filterCategory);
       if (filterPriority) filtered = filtered.filter(r => r.priority === filterPriority);
       if (filterStatus) filtered = filtered.filter(r => r.status === filterStatus);
+      if (filterAssignedTo) filtered = filtered.filter(r => r.assigned_to === filterAssignedTo);
       if (search) {
         const q = search.toLowerCase();
         filtered = filtered.filter(r =>
@@ -764,7 +775,7 @@ function App() {
       setTotalPages(Math.ceil(filtered.length / pageSize));
       setLoading(false);
     }
-  }, [apiOnline, page, pageSize, filterSource, filterCategory, filterPriority, filterStatus, search]);
+  }, [apiOnline, page, pageSize, filterSource, filterCategory, filterPriority, filterStatus, filterAssignedTo, search]);
 
   useEffect(() => {
     if (apiOnline !== null) loadRecords();
@@ -853,6 +864,16 @@ function App() {
   const sources = ["email","slack","whatsapp"];
   const priorities = ["P1","P2","P3"];
   const statuses = ["open","in-progress","resolved"];
+  const teamMembers = [
+    {name:"Ipsita Sahu", role:"Claims Lead", color:"#c53030"},
+    {name:"Manashi Goswami", role:"Compliance", color:"#2b6cb0"},
+    {name:"Mikhel Dhiman", role:"Tech Support", color:"#2f855a"},
+    {name:"Arun Saseedharan", role:"Senior AM", color:"#6d4ef0"},
+    {name:"Vaishnavi Bhat", role:"Account Manager", color:"#c05621"},
+    {name:"Rajorshi Chowdhury", role:"Junior AM", color:"#276749"},
+    {name:"Subash P", role:"Customer Success", color:"#276749"},
+    {name:"Deepika Nair", role:"Operations", color:"#4a4868"},
+  ];
 
   const p1Count = stats?.by_priority?.P1 || 0;
   const openCount = stats?.by_status?.open || 0;
@@ -926,6 +947,36 @@ function App() {
               )}
             </div>
           ))}
+
+          <div className="nav-section-label" style={{marginTop:12}}>Team Members</div>
+          {teamMembers.map(m => {
+            const memberStats = stats?.by_assignee?.[m.name];
+            const isActive = filterAssignedTo === m.name;
+            return (
+              <div key={m.name} className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => { setFilterAssignedTo(isActive ? "" : m.name); setPage(1); setView('list'); }}>
+                <div style={{
+                  width:22, height:22, borderRadius:'50%',
+                  background: isActive ? m.color : `${m.color}22`,
+                  color: isActive ? '#fff' : m.color,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:10, fontWeight:700, flexShrink:0, transition:'all 0.2s'
+                }}>
+                  {m.name.split(' ').map(w => w[0]).join('').slice(0,2)}
+                </div>
+                <div style={{flex:1, overflow:'hidden', minWidth:0}}>
+                  <div style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:12}}>{m.name.split(' ')[0]} {m.name.split(' ')[1]?.[0]}.</div>
+                  <div style={{fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{m.role}</div>
+                </div>
+                {memberStats?.total > 0 && (
+                  <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1, flexShrink:0}}>
+                    <span className="nav-badge purple">{memberStats.total}</span>
+                    {memberStats.p1 > 0 && <span style={{fontSize:9, color:'var(--p1)', fontWeight:700}}>{memberStats.p1} P1</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer">
@@ -942,7 +993,7 @@ function App() {
         <div className="topbar">
           <div>
             <div className="topbar-title">
-              {view === 'analytics' ? 'Analytics' : 'Messages'}
+              {view === 'analytics' ? 'Analytics' : filterAssignedTo ? `${filterAssignedTo.split(' ')[0]}'s Tickets` : 'Messages'}
             </div>
           </div>
           {view === 'list' && (
