@@ -21,11 +21,12 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-from fastapi import FastAPI, HTTPException, Query, Depends, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, Depends, Request, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import io
 
 from database import Escalation, get_db, init_db, SessionLocal
 from mock_sources import generate_mock_records
@@ -346,6 +347,111 @@ def sync_sources(db: Session = Depends(get_db)):
 
     results["total_added"] = results["gmail"] + results["slack"] + results["whatsapp"]
     return results
+
+
+@app.post("/api/upload-data")
+async def upload_data(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Upload an xlsx file to replace all mock (non-live) data in the dashboard."""
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx files are supported")
+
+    try:
+        import openpyxl
+        contents = await file.read()
+        wb = openpyxl.load_workbook(io.BytesIO(contents))
+        ws = wb.active
+
+        # Read headers from first row
+        headers = [str(cell.value).strip() if cell.value else "" for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+
+        # Flexible column mapping (case-insensitive, handles spaces/underscores)
+        def find_col(candidates):
+            for c in candidates:
+                for i, h in enumerate(headers):
+                    if h.lower().replace(" ", "_") == c.lower().replace(" ", "_"):
+                        return i
+            return None
+
+        col = {
+            "source":       find_col(["source"]),
+            "sender_name":  find_col(["sender_name", "sender name"]),
+            "sender_email": find_col(["sender_email", "sender email", "email"]),
+            "company":      find_col(["company"]),
+            "subject":      find_col(["subject"]),
+            "body":         find_col(["body", "message", "description"]),
+            "category":     find_col(["category"]),
+            "priority":     find_col(["priority"]),
+            "status":       find_col(["status"]),
+            "assigned_to":  find_col(["assigned_to", "assigned to"]),
+            "assigned_role":find_col(["role", "assigned_role", "assigned role"]),
+        }
+
+        # Delete all non-live records
+        db.query(Escalation).filter(Escalation.is_live == False).delete()
+        db.commit()
+
+        added = 0
+        now = datetime.utcnow()
+
+        for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True)):
+            if not any(row):
+                continue
+
+            def get(key, default=""):
+                idx = col.get(key)
+                if idx is None or idx >= len(row):
+                    return default
+                v = row[idx]
+                return str(v).strip() if v is not None else default
+
+            source = get("source", "email").lower()
+            if source not in ("email", "slack", "whatsapp"):
+                source = "email"
+
+            category = get("category", "Query")
+            if category not in ("Escalation","Complaint","Follow-up","Query","Initiation","Appreciation"):
+                category = "Query"
+
+            priority = get("priority", "P3")
+            if priority not in ("P1","P2","P3"):
+                priority = "P3"
+
+            status = get("status", "open")
+            if status not in ("open","in-progress","resolved"):
+                status = "open"
+
+            created_at = now - timedelta(hours=i)
+
+            esc = Escalation(
+                id=str(uuid.uuid4()),
+                source=source,
+                sender_name=get("sender_name", "Unknown"),
+                sender_email=get("sender_email", ""),
+                company=get("company", ""),
+                subject=get("subject", "(no subject)"),
+                body=get("body", ""),
+                category=category,
+                priority=priority,
+                status=status,
+                assigned_to=get("assigned_to") or None,
+                assigned_role=get("assigned_role") or None,
+                ai_summary=None,
+                ai_reply_draft=None,
+                channel=None,
+                thread_ts=None,
+                created_at=created_at,
+                updated_at=created_at,
+                is_live=False,
+            )
+            db.add(esc)
+            added += 1
+
+        db.commit()
+        return {"success": True, "rows_imported": added, "message": f"Imported {added} records from {file.filename}"}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to parse xlsx: {e}")
 
 
 @app.post("/api/ai/pipeline")

@@ -802,6 +802,31 @@ function App() {
   const setFilter = (setter) => (val) => { setter(val); setPage(1); };
 
   // Sync
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleUploadXlsx = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !apiOnline) return;
+    setUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    fetch(`${API}/api/upload-data`, { method: "POST", body: form })
+      .then(r => r.json())
+      .then(data => {
+        setUploading(false);
+        e.target.value = "";
+        if (data.success) {
+          fetch(`${API}/api/stats`).then(r => r.json()).then(setStats).catch(() => {});
+          loadRecords();
+          alert(`✅ Imported ${data.rows_imported} records from your xlsx!`);
+        } else {
+          alert(`❌ Upload failed: ${data.detail || "Unknown error"}`);
+        }
+      })
+      .catch(err => { setUploading(false); alert(`❌ Upload failed: ${err}`); });
+  };
+
   const handleSync = () => {
     if (!apiOnline) return;
     setSyncing(true);
@@ -987,8 +1012,14 @@ function App() {
         </nav>
 
         <div className="sidebar-footer">
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={handleUploadXlsx} />
           <button className="sync-btn" onClick={handleSync} disabled={!apiOnline || syncing}>
             {syncing ? '⟳ Syncing...' : '⟳ Sync Sources'}
+          </button>
+          <button className="sync-btn" onClick={() => apiOnline && fileInputRef.current?.click()}
+            disabled={!apiOnline || uploading}
+            style={{marginTop:6, background:'var(--surface2)', color:'var(--purple)', border:'1.5px solid var(--purple)'}}>
+            {uploading ? '⏳ Importing...' : '📂 Upload xlsx Data'}
           </button>
           <div>Total: {stats?.total?.toLocaleString() || '—'} messages</div>
         </div>
